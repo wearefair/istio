@@ -14,7 +14,7 @@ We verified that the remote proxy sidecar containers had connectivity to Pilot D
 
 After diving into the Istio source, we only found that 3333 and 9999 were ports returned from the [Envoy debug registry](https://github.com/istio/istio/blob/1.0.2/pilot/pkg/proxy/envoy/v2/debug.go#L324-L337).
 
-In the Istio logs, we could see that a remote cluster registry was being picked up. However, based off of the server bootup order, it looked like the debug registry would always be loaded before the multicluster ones. Since the debug registry would always return entries for the management ports, it meant that the debug management ports would always be picked up instead of the remote cluster ones.
+In the Istio logs, we could see that a remote cluster registry was being picked up. However, based off of the [server bootup order]*(https://github.com/istio/istio/blob/1.0.2/pilot/pkg/bootstrap/server.go#L211-L219) (note that Discovery service is always init'd before Multicluster), it looked like the debug registry would always be loaded before the multicluster ones. Since the debug registry would always return entries for the management ports, it meant that the debug management ports would always be used instead of the remote cluster ones, meaning that liveness and readiness probes for remote clusters would NEVER work.
 
 We added a lot more logs into this fork and deployed it in a test cluster to confirm our suspicious.
 
