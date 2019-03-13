@@ -1,5 +1,5 @@
 # Why this Fork
-In a mutual TLS-disabled multicluster Kubernetes setup, gRPC liveness and readiness probes don't work in remote clusters. However, this behavior could not be replicated on the Kubernetes cluster running the Istio control plane.
+In a mutual TLS-disabled multicluster Kubernetes setup, liveness and readiness probes don't work in remote clusters. However, this behavior could not be replicated on the Kubernetes cluster running the Istio control plane.
 
 We verified that the remote proxy sidecar containers had connectivity to Pilot Discovery. However, we noticed when comparing the logs in the sidecar containers on a remote cluster vs the local cluster that the local cluster sidecars were properly registering liveness and readiness probes, and the remote clusters weren't.
 
@@ -14,7 +14,7 @@ We verified that the remote proxy sidecar containers had connectivity to Pilot D
 
 After diving into the Istio source, we only found that 3333 and 9999 were ports returned from the [Envoy debug registry](https://github.com/istio/istio/blob/1.0.2/pilot/pkg/proxy/envoy/v2/debug.go#L324-L337).
 
-In the Istio logs, we could see that a remote cluster registry was being picked up. However, based off of the [server bootup order]*(https://github.com/istio/istio/blob/1.0.2/pilot/pkg/bootstrap/server.go#L211-L219) (note that Discovery service is always init'd before Multicluster), it looked like the debug registry would always be loaded before the multicluster ones. Since the debug registry would always return entries for the management ports, it meant that the debug management ports would always be used instead of the remote cluster ones, meaning that liveness and readiness probes for remote clusters would NEVER work.
+In the Istio logs, we could see that a remote cluster registry was being picked up. However, based off of the [server bootup order](https://github.com/istio/istio/blob/1.0.2/pilot/pkg/bootstrap/server.go#L211-L219) (note that Discovery service is always init'd before Multicluster), it looks like Discovery has various registry providers that an [aggregate controller iterates through](https://github.com/istio/istio/blob/1.0.2/pilot/pkg/serviceregistry/aggregate/controller.go#L172-L192) to identify management and health check information from. Since the debug registry is always loaded before the multicluster K8 registries, and given that the debug registry will always return entries, it meant that the aggregate controller would get a hit on the debug ports and exit the loop. This means that remote cluster ports will never be returned properly, and liveness and readiness probes for the remote cluster will never work..
 
 We added a lot more logs into this fork and deployed it in a test cluster to confirm our suspicious.
 
