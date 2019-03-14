@@ -191,7 +191,7 @@ func validateCIDRList(cidrs string) error {
 func validatePortList(ports string) error {
 	if len(ports) > 0 {
 		for _, port := range strings.Split(ports, ",") {
-			if _, err := strconv.ParseInt(port, 10, 16); err != nil {
+			if _, err := strconv.ParseUint(strings.TrimSpace(port), 10, 16); err != nil {
 				return fmt.Errorf("failed parsing port '%s': %v", port, err)
 			}
 		}
